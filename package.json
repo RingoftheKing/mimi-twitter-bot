@@ -1,0 +1,30 @@
+{
+  "name": "x_scraper",
+  "version": "1.0.0",
+  "description": "basic creator post checker with playwright",
+  "keywords": [
+    "scraping"
+  ],
+  "homepage": "https://github.com/RingoftheKing/mimi-twitter-bot#readme",
+  "bugs": {
+    "url": "https://github.com/RingoftheKing/mimi-twitter-bot/issues"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/RingoftheKing/mimi-twitter-bot.git"
+  },
+  "license": "MIT",
+  "author": "yuhao",
+  "type": "commonjs",
+  "main": "main.js",
+  "scripts": {
+    "test": "run tests"
+  },
+  "dependencies": {
+    "playwright": "^1.64.1"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.64.1",
+    "@types/node": "^26.6.5"
+  }
+}
