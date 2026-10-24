@@ -69,7 +69,10 @@ function addToReferences(postString, dateTimeCreated) {
     return true;
 }
 
-(async () => {
+async function ReadTweets() {
+    let newTweets = [];
+
+    // change to headless on ec2
     const context = await chromium.launchPersistentContext(
         './x-profile',
         {
@@ -88,13 +91,8 @@ function addToReferences(postString, dateTimeCreated) {
     const showMoreTestId = "tweet-text-show-more-link";
     const timeTestId = "User-Name"
 
-    // A pinned tweet is located within a tweet, with a div of this test-id, with innerText as Pinned
-    // Will be used for skip reading pinned tweets later
+    // pinned tweet checking
     const isPinnedTweetTestId = "socialContext"
-
-    // time info is located within the div test-id "User-Name"
-    // <time datetime="2026-10-18T06:23:25.000Z">1h</time>
-
 
     const tweets = page.locator(`[data-testid="${containerTestId}"]`);
 
@@ -103,6 +101,17 @@ function addToReferences(postString, dateTimeCreated) {
         try {
             // grabs content
             const tweet = tweets.nth(i);
+
+            // guard check for pinned tweet, if pinned, skip reading and continue
+            if (i === 0) {
+                const isPinnedTweetElement = tweet.locator(`[data-testid="${isPinnedTweetTestId}"]`);
+                const isInnerTextPinned = await isPinnedTweetElement.innerText();
+                if (await isPinnedTweetElement.count() > 0 && isInnerTextPinned === "Pinned") {
+                    console.log("Skipping pinned tweet");
+                    continue;
+                }
+            }
+
             const textElement = tweet.locator(`[data-testid="${textTestId}"]`).first();
             const showMoreElement = tweet.locator(`[data-testid="${showMoreTestId}"]`);
 
@@ -113,21 +122,51 @@ function addToReferences(postString, dateTimeCreated) {
             console.log("Content:");
             console.log(textContent);
             
-            // grab time if possible, if not, just continue to next tweet
-            let dateTimeCreated = "<no time found>";
-            try {
-                const userNameElement = tweet.locator(`[data-testid="${timeTestId}"]`).first();
-                const timeElement = await userNameElement.locator('time').first();
+            // grab time if possible, let the time be now. Dupes Skip writing so time won't be overwritten
+            const userNameElement = tweet.locator(`[data-testid="${timeTestId}"]`).first();
+            const timeElement = userNameElement.locator('time').first();
+            let localizeDateTime = new Date().toLocaleString() // just a default
+            let dateTimeCreated = new Date().toISOString();
+            try {                
                 dateTimeCreated = await timeElement.getAttribute('datetime');
+
+                // Update the localized date time
+                localizeDateTime = new Date(dateTimeCreated).toLocaleString('en-SG', {
+                    timeZone: 'Asia/Singapore', // Force Singapore Time
+                    year: 'numeric',
+                    month: '2-digit',
+                    day: '2-digit',
+                    hour: '2-digit',
+                    minute: '2-digit',
+                    second: '2-digit',
+                    hour12: false // 24-hour format
+                });
                 
                 console.log("Created On:");
-                console.log(dateTimeCreated);
+                console.log(localizeDateTime);
             } catch (error) {
                 console.log("Couldn't locate a time element for this tweet");
             }
 
-            // add to references (isAdded bool for future use, if needed)
-            const isAdded = addToReferences(textContent, dateTimeCreated);
+            // grab the link associated with the time
+            const postLink = timeElement.locator("xpath=ancestor::a[1]");
+
+            const href =
+                await postLink.getAttribute("href");
+
+            const url = href ? `https://x.com${href}` : "No link found";
+            console.log("Link:");
+            console.log(url);
+
+            // Is this post new.
+            const isAdded = addToReferences(textContent, dateTimeCreated); // use original datetime so old post removal still works
+            if (isAdded) {
+                newTweets.push({
+                    content: textContent,
+                    createdOn: localizeDateTime,
+                    url: url
+                });
+            }
 
             // after each post scroll the viewport down to the next post, so that the next post is visible and can be read
             await tweet.scrollIntoViewIfNeeded();
@@ -138,4 +177,11 @@ function addToReferences(postString, dateTimeCreated) {
     }
 
     await context.close();
-})();
+    return newTweets;
+}
+
+module.exports = {
+    ReadTweets
+};
+
+// ReadTweets()

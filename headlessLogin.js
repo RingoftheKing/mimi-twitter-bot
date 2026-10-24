@@ -2,7 +2,14 @@
 
 const { chromium } = require('playwright');
 
+function checkIfLoggedIn(page) {
+    // Check for the presence of the "Home" link in the navigation bar
+    const homeLink = page.locator('a[aria-label="Home"]');
+    return homeLink.isVisible();
+}
+
 (async () => {
+    
     const context = await chromium.launchPersistentContext(
         './x-profile-headless',
         {
@@ -10,10 +17,17 @@ const { chromium } = require('playwright');
             args: ['--disable-blink-features=AutomationControlled']
         }
     );
-
+    
     const page = await context.newPage();
-
+    
     await page.goto('https://x.com/');
+
+    const isAlreadyLoggedIn = checkIfLoggedIn(page); 
+    if (isAlreadyLoggedIn) {
+        console.log("Already logged in, no need to log in again.");
+        return;
+    }
+    
     // Username / email
     const usernameInput = page.locator(
       'input[name="username_or_email"]'
@@ -42,5 +56,12 @@ const { chromium } = require('playwright');
         .getByRole('button', { name: 'Continue' })
         .click();
 
-    // Login flow continues here...
+    // A Basic check that we are at home
+    const isLoggedIn = checkIfLoggedIn(page);
+    if (isLoggedIn) {
+        console.log("Login successful");
+    } else {
+        console.log("Unable to confirm login success");
+    }
+
 })();
